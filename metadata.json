@@ -1,0 +1,6 @@
+{
+  "name": "SoundStream Music Web App",
+  "description": "Spotify-style SoundCloud music streaming app with live search, custom Client ID management, audio playback, and library persistence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
