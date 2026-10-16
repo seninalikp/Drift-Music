@@ -1,14 +1,18 @@
-# 🌊 Drift Music
+<div align="center">
+  <img src="docs/assets/logo.png" width="84" height="84" alt="Drift Logo" />
+  <h1>Drift Music</h1>
+  <p><b>Next-Generation Autonomous Music Streaming & Discovery Engine for Android.</b></p>
+  <p><i>Formerly Soundify — Completely reimagined as a native Android experience powered by a sequence-aware algorithmic engine.</i></p>
 
-> **Next-Generation Autonomous Music Streaming & Discovery Engine for Android.**  
-> *Formerly Soundify — Completely reimagined as a native Android experience powered by a sequence-aware algorithmic engine.*
-
-[![Platform](https://img.shields.io/badge/Platform-Android_8.0+_(API_26+)-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
-[![Language](https://img.shields.io/badge/Language-Kotlin_2.0-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![UI](https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-[![Engine](https://img.shields.io/badge/Audio-AndroidX_Media3_ExoPlayer-FF6F00?style=for-the-badge&logo=google&logoColor=white)](https://developer.android.com/guide/topics/media/media3)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Author](https://img.shields.io/badge/Author-Senin_Ali_KP-blue?style=for-the-badge&logo=github)](https://github.com/seninalikp)
+  <p>
+    <a href="https://android.com"><img src="https://img.shields.io/badge/Platform-Android_8.0+_(API_26+)-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform" /></a>
+    <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Language-Kotlin_2.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Language" /></a>
+    <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white" alt="UI" /></a>
+    <a href="https://developer.android.com/guide/topics/media/media3"><img src="https://img.shields.io/badge/Audio-AndroidX_Media3-FF6F00?style=flat-square&logo=google&logoColor=white" alt="Audio" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" /></a>
+    <a href="https://github.com/seninalikp"><img src="https://img.shields.io/badge/Author-Senin_Ali_KP-blue?style=flat-square&logo=github" alt="Author" /></a>
+  </p>
+</div>
 
 ---
 
@@ -18,17 +22,9 @@ Get the latest signed APK directly and install it on your Android device:
 
 | Release | Version | Direct Download |
 | :--- | :--- | :--- |
-| **Latest Release** | **v1.0.0** | [⬇️ **Download Drift-v1.0.0.apk**](https://github.com/seninalikp/soundify/releases/download/v1.0.0/Drift-v1.0.0.apk) |
+| **Latest Release** | **v1.0.0** | [⬇️ **Download Drift-v1.0.0.apk**](https://github.com/seninalikp/drift/releases/download/v1.0.0/Drift-v1.0.0.apk) |
 
 *(Supports Android 8.0 Oreo through Android 15)*
-
----
-
-## 📸 Screenshots
-
-| Sonic Flow Home | Interactive Now Playing | Apple Music-Style Library | Profile & Customization |
-| :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/drift_home.png" width="220" /> | <img src="docs/screenshots/drift_live.png" width="220" /> | <img src="docs/screenshots/drift_light_home.png" width="220" /> | <img src="docs/screenshots/drift_profile.png" width="220" /> |
 
 ---
 
@@ -97,7 +93,7 @@ flowchart TD
 ## 🛠️ Project Structure
 
 ```
-soundify/
+drift/
 ├── app/
 │   ├── src/main/
 │   │   ├── java/com/soundify/player/
@@ -114,7 +110,7 @@ soundify/
 ├── archive/
 │   └── legacy_web/                  # Preserved React/Vite web application archive
 ├── docs/
-│   └── screenshots/                 # Application visual documentation
+│   └── assets/                      # Application brand assets & logo
 ├── build.gradle.kts
 ├── settings.gradle.kts
 └── README.md
@@ -126,7 +122,7 @@ soundify/
 
 The original React/Vite/TypeScript web application of Soundify has been cleanly archived:
 - In this repository under [`archive/legacy_web/`](archive/legacy_web/)
-- In the dedicated branch [`archive/web-legacy`](https://github.com/seninalikp/soundify/tree/archive/web-legacy)
+- In the dedicated branch [`archive/web-legacy`](https://github.com/seninalikp/drift/tree/archive/web-legacy)
 
 ---
 
@@ -140,8 +136,8 @@ The original React/Vite/TypeScript web application of Soundify has been cleanly 
 ### Build Steps
 ```bash
 # Clone the repository
-git clone https://github.com/seninalikp/soundify.git
-cd soundify
+git clone https://github.com/seninalikp/drift.git
+cd drift
 
 # Build Debug APK
 ./gradlew assembleDebug
