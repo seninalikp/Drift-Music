@@ -22,7 +22,7 @@ Get the latest signed APK directly and install it on your Android device:
 
 | Release | Version | Direct Download |
 | :--- | :--- | :--- |
-| **Latest Release** | **v1.0.0** | [⬇️ **Download Drift-v1.0.0.apk**](https://github.com/seninalikp/drift/releases/download/v1.0.0/Drift-v1.0.0.apk) |
+| **Latest Release** | **v1.0.0** | [⬇️ **Download Drift-v1.0.0.apk**](https://github.com/seninalikp/Drift-Music/releases/download/v1.0.0/Drift-v1.0.0.apk) |
 
 *(Supports Android 8.0 Oreo through Android 15)*
 
@@ -122,7 +122,7 @@ drift/
 
 The original React/Vite/TypeScript web application of Soundify has been cleanly archived:
 - In this repository under [`archive/legacy_web/`](archive/legacy_web/)
-- In the dedicated branch [`archive/web-legacy`](https://github.com/seninalikp/drift/tree/archive/web-legacy)
+- In the dedicated branch [`archive/web-legacy`](https://github.com/seninalikp/Drift-Music/tree/archive/web-legacy)
 
 ---
 
@@ -136,7 +136,7 @@ The original React/Vite/TypeScript web application of Soundify has been cleanly 
 ### Build Steps
 ```bash
 # Clone the repository
-git clone https://github.com/seninalikp/drift.git
+git clone https://github.com/seninalikp/Drift-Music.git
 cd drift
 
 # Build Debug APK
