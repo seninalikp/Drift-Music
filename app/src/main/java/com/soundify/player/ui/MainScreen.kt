@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -160,6 +161,19 @@ fun MainScreen(viewModel: PlayerViewModel) {
                                 unselectedTextColor = colors.textSecondary
                             )
                         )
+                        NavigationBarItem(
+                            selected = activeTab == "settings",
+                            onClick = { viewModel.setActiveTab("settings") },
+                            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                            label = { Text("Settings") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = colors.accent,
+                                selectedTextColor = colors.accent,
+                                indicatorColor = if (colors.isDark) Color(0xFF242429) else Color(0xFFE2E8F0),
+                                unselectedIconColor = colors.textSecondary,
+                                unselectedTextColor = colors.textSecondary
+                            )
+                        )
                     }
                 }
             },
@@ -174,6 +188,11 @@ fun MainScreen(viewModel: PlayerViewModel) {
                     "home" -> HomeScreen(viewModel)
                     "search" -> SearchScreen(viewModel)
                     "library" -> LibraryScreen(viewModel)
+                    "settings" -> AudioSettingsScreen(
+                        settingsManager = viewModel.audioSettingsManager,
+                        onBack = { viewModel.setActiveTab("home") },
+                        viewModel = viewModel
+                    )
                 }
             }
         }

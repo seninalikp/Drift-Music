@@ -68,6 +68,22 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         scope = viewModelScope
     )
 
+    val audioSettingsManager = AudioSettingsManager(application)
+
+    fun applyAudioQuality(url: String): String {
+        if (!url.contains("saavncdn.com")) return url
+        val cm = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+        val isWifi = cm?.activeNetwork?.let { net ->
+            cm.getNetworkCapabilities(net)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+        } ?: true
+        val quality = audioSettingsManager.resolveActiveQuality(isWifi)
+        return when (quality) {
+            AudioQuality.NORMAL -> url.replace("_320.", "_96.").replace("_160.", "_96.")
+            AudioQuality.HIGH -> url.replace("_320.", "_160.").replace("_96.", "_160.")
+            AudioQuality.UHD -> url.replace("_96.", "_320.").replace("_160.", "_320.")
+        }
+    }
+
     private var mediaController: MediaController? = null
     private var progressJob: Job? = null
     private var searchJob: Job? = null
@@ -366,7 +382,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         val nextTrack = q[nextIdx]
         prefetchJob = viewModelScope.launch {
             try {
-                val resolvedUrl = PipedRepository.resolveStreamUrl(nextTrack)
+                val resolvedUrl = applyAudioQuality(PipedRepository.resolveStreamUrl(nextTrack))
                 if (resolvedUrl.isNotBlank()) {
                     val resolvedTrack = nextTrack.copy(streamUrl = resolvedUrl)
                     val updatedQueue = _queue.value.toMutableList()
@@ -530,7 +546,57 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun playTrack(track: Track, contextQueue: List<Track>? = null, startPositionMs: Long = 0L) {
+    private fun normalizeTitle(title: String?): String =
+        title.orEmpty()
+            .trim()
+            .replace(Regex("\\s+"), " ")
+            .lowercase()
+
+    fun playSongFromAnyScreen(song: Track, contextQueue: List<Track>? = null) {
+        val currentTitle = normalizeTitle(
+            mediaController?.currentMediaItem?.mediaMetadata?.title?.toString()
+                ?: _currentTrack.value?.title
+        )
+
+        val requestedTitle = normalizeTitle(song.title)
+
+        // Don't restart a song with the same title.
+        if (requestedTitle.isNotBlank() &&
+            requestedTitle == currentTitle
+        ) {
+            val controller = mediaController
+            if (controller != null && !controller.isPlaying) {
+                controller.play()
+            }
+            return
+        }
+
+        playTrack(song, contextQueue, forceRestart = true)
+    }
+
+    fun playTrack(
+        track: Track,
+        contextQueue: List<Track>? = null,
+        startPositionMs: Long = 0L,
+        forceRestart: Boolean = false
+    ) {
+        if (!forceRestart && startPositionMs == 0L) {
+            val currentTitle = normalizeTitle(
+                mediaController?.currentMediaItem?.mediaMetadata?.title?.toString()
+                    ?: _currentTrack.value?.title
+            )
+            val requestedTitle = normalizeTitle(track.title)
+
+            // Don't restart a song with the same title.
+            if (requestedTitle.isNotBlank() && requestedTitle == currentTitle) {
+                val controller = mediaController
+                if (controller != null && !controller.isPlaying) {
+                    controller.play()
+                }
+                return
+            }
+        }
+
         viewModelScope.launch {
             _isBuffering.value = true
 
@@ -573,29 +639,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             )
             prefs.saveSession(track, updatedQueue, activeIdx, startPositionMs, _activeTab.value)
 
-            val resolvedUrl = PipedRepository.resolveStreamUrl(track)
+            val resolvedUrl = applyAudioQuality(PipedRepository.resolveStreamUrl(track))
             val resolvedTrack = track.copy(streamUrl = resolvedUrl)
             _currentTrack.value = resolvedTrack
 
             val controller = mediaController
             if (controller != null) {
-                val metadata = MediaMetadata.Builder()
-                    .setTitle(resolvedTrack.title)
-                    .setArtist(resolvedTrack.artist)
-                    .setArtworkUri(Uri.parse(resolvedTrack.artworkUrl))
-                    .build()
-
-                val mediaItem = MediaItem.Builder()
-                    .setMediaId(resolvedTrack.id)
-                    .setUri(resolvedUrl)
-                    .setMediaMetadata(metadata)
-                    .setRequestMetadata(
-                        MediaItem.RequestMetadata.Builder()
-                            .setMediaUri(Uri.parse(resolvedUrl))
-                            .build()
-                    )
-                    .build()
-
+                val mediaItem = resolvedTrack.toMediaItem(resolvedUrl)
                 controller.setMediaItem(mediaItem, startPositionMs)
                 controller.prepare()
                 controller.play()
@@ -653,7 +703,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         if (q.isEmpty()) return
         val nextIdx = _queueIndex.value + 1
         if (nextIdx < q.size) {
-            playTrack(q[nextIdx], q, 0L)
+            playTrack(q[nextIdx], q, 0L, forceRestart = true)
         } else {
             // Radio / Dynamic queue via PlayQueue (waits up to 5s if still refilling)
             viewModelScope.launch {
@@ -661,18 +711,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 if (next != null) {
                     val updatedQueue = _queue.value + next
                     _queue.value = updatedQueue
-                    playTrack(next, updatedQueue, 0L)
+                    playTrack(next, updatedQueue, 0L, forceRestart = true)
                 } else {
                     // Fallback if awaitNext times out
                     val radioTracks = if (current != null) recommender.nextUp(current, 10) else emptyList()
                     if (radioTracks.isNotEmpty()) {
                         val combined = _queue.value + radioTracks
                         _queue.value = combined
-                        playTrack(radioTracks.first(), combined, 0L)
+                        playTrack(radioTracks.first(), combined, 0L, forceRestart = true)
                         return@launch
                     }
                     if (_queue.value.isNotEmpty()) {
-                        playTrack(_queue.value[0], _queue.value, 0L)
+                        playTrack(_queue.value[0], _queue.value, 0L, forceRestart = true)
                     }
                 }
             }
@@ -687,7 +737,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         val q = _queue.value
         if (q.isEmpty()) return
         val prevIdx = if (_queueIndex.value - 1 < 0) q.lastIndex else _queueIndex.value - 1
-        playTrack(q[prevIdx], q, 0L)
+        playTrack(q[prevIdx], q, 0L, forceRestart = true)
     }
 
     fun skipToNext() = nextTrack(isUserSkipped = true)
@@ -827,3 +877,29 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         super.onCleared()
     }
 }
+
+fun Track.toMediaItem(resolvedUrlOverride: String? = null): MediaItem {
+    val url = resolvedUrlOverride ?: streamUrl
+    val metadata = MediaMetadata.Builder()
+        .setTitle(title)
+        .setArtist(artist)
+        .setArtworkUri(if (artworkUrl.isNotBlank()) Uri.parse(artworkUrl) else null)
+        .build()
+
+    val builder = MediaItem.Builder()
+        .setMediaId(id)
+        .setMediaMetadata(metadata)
+
+    if (url.isNotBlank()) {
+        val uri = Uri.parse(url)
+        builder.setUri(uri)
+        builder.setRequestMetadata(
+            MediaItem.RequestMetadata.Builder()
+                .setMediaUri(uri)
+                .build()
+        )
+    }
+
+    return builder.build()
+}
+
