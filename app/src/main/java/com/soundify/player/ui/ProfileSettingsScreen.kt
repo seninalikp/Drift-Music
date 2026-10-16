@@ -1,6 +1,8 @@
 package com.soundify.player.ui
 
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -171,13 +173,18 @@ fun ProfileSettingsDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Profile Picture Centerpiece & Upload
+                // Profile Picture Row
                 ProfileImagePicker(
-                    avatarUrl = avatarInput,
-                    displayName = nameInput,
-                    onAvatarChanged = { newAvatar ->
-                        avatarInput = newAvatar
-                        viewModel.updateProfile(nameInput, newAvatar)
+                    currentImageUri = avatarInput.takeIf { it.isNotBlank() }?.let {
+                        if (it.startsWith("/")) Uri.fromFile(File(it)) else Uri.parse(it)
+                    },
+                    onImageSelected = { newUri ->
+                        avatarInput = newUri.toString()
+                        viewModel.updateProfile(nameInput, newUri.toString())
+                    },
+                    onImageRemoved = {
+                        avatarInput = ""
+                        viewModel.updateProfile(nameInput, "")
                     }
                 )
 

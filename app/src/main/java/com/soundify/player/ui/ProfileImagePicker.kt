@@ -8,25 +8,22 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -34,13 +31,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.min
+
+private val SkyBlue = Color(0xFF38BDF8)
+private val AvatarBg = Color(0xFF1E1E1E)
 
 private const val PREFS_NAME = "soundify_profile_prefs"
 private const val KEY_AVATAR_PATH = "local_avatar_file_path"
@@ -78,8 +77,132 @@ fun rememberPersistentAvatarUri(): MutableState<Uri?> {
 }
 
 /**
- * Compact, neat profile avatar picker: displays the circular avatar centerpiece with
- * a sleek camera overlay badge, plus compact "Change Photo" / "Upload Photo" and "Remove" pills.
+ * Tapping this component opens the native local gallery picker immediately.
+ * No random avatars, no web links—just local photos from the user's device.
+ * Automatically downscales and persists chosen image in private app storage.
+ */
+@Composable
+fun ProfileImagePicker(
+    currentImageUri: Uri?,
+    onImageSelected: (Uri) -> Unit,
+    modifier: Modifier = Modifier,
+    onImageRemoved: (() -> Unit)? = null
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isSaving by remember { mutableStateOf(false) }
+
+    // Native modern Android photo picker contract
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                isSaving = true
+                val localUri = persistAvatarLocally(context, uri)
+                isSaving = false
+                if (localUri != null) {
+                    onImageSelected(localUri)
+                } else {
+                    onImageSelected(uri)
+                }
+            }
+        }
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = !isSaving) {
+                // Launch gallery picker filtered for images only
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
+            .padding(vertical = 12.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar Circle (60dp)
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CircleShape)
+                .background(AvatarBg),
+            contentAlignment = Alignment.Center
+        ) {
+            if (currentImageUri != null) {
+                AsyncImage(
+                    model = currentImageUri,
+                    contentDescription = "Profile Picture",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Default User",
+                    tint = SkyBlue,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            if (isSaving) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = SkyBlue,
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Profile Picture",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = if (isSaving) "Saving to local storage..." else "Tap to change from gallery",
+                color = Color.White.copy(alpha = 0.55f),
+                fontSize = 13.sp
+            )
+        }
+
+        if (currentImageUri != null && onImageRemoved != null && !isSaving) {
+            IconButton(
+                onClick = {
+                    scope.launch {
+                        deleteLocalAvatars(context)
+                        onImageRemoved()
+                    }
+                },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove Photo",
+                    tint = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Convenience overload for callers passing avatarUrl string.
  */
 @Composable
 fun ProfileImagePicker(
@@ -88,190 +211,17 @@ fun ProfileImagePicker(
     onAvatarChanged: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val colors = DriftTheme.colors
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var isSaving by remember { mutableStateOf(false) }
-
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { pickedUri ->
-        if (pickedUri != null) {
-            isSaving = true
-            scope.launch {
-                val localUri = persistAvatarLocally(context, pickedUri)
-                isSaving = false
-                if (localUri != null) {
-                    onAvatarChanged(localUri.toString())
-                }
-            }
-        }
+    val uri = remember(avatarUrl) {
+        if (avatarUrl.isBlank()) null
+        else if (avatarUrl.startsWith("/")) Uri.fromFile(File(avatarUrl))
+        else Uri.parse(avatarUrl)
     }
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Centerpiece Avatar Box
-        Box(
-            modifier = Modifier
-                .size(92.dp)
-                .clickable(enabled = !isSaving) {
-                    galleryLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            // Main circular image / monogram
-            Box(
-                modifier = Modifier
-                    .size(86.dp)
-                    .clip(CircleShape)
-                    .border(2.5.dp, colors.accent, CircleShape)
-                    .background(colors.card),
-                contentAlignment = Alignment.Center
-            ) {
-                if (avatarUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(avatarUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Profile Picture",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(colors.accent, Color(0xFF6366F1))
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = displayName.take(1).uppercase().ifBlank { "D" },
-                            color = Color.White,
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                if (isSaving) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.5f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = colors.accent,
-                            strokeWidth = 2.5.dp,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-            }
-
-            // Bottom-Right Camera Pill Badge
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(colors.accent)
-                    .border(2.dp, colors.surface, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Change Photo",
-                    tint = Color.Black,
-                    modifier = Modifier.size(14.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Compact Actions Row: "Upload Photo" / "Change Photo" + "Remove"
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = colors.card,
-                border = BorderStroke(1.dp, colors.border),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(18.dp))
-                    .clickable(enabled = !isSaving) {
-                        galleryLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    }
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        tint = colors.textPrimary,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Text(
-                        text = if (avatarUrl.isNotBlank()) "Change Photo" else "Upload Photo",
-                        color = colors.textPrimary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            if (avatarUrl.isNotBlank() && !isSaving) {
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f)),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable {
-                            scope.launch {
-                                deleteLocalAvatars(context)
-                                onAvatarChanged("")
-                            }
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            tint = Color(0xFFEF4444),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "Remove",
-                            color = Color(0xFFEF4444),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-        }
-    }
+    ProfileImagePicker(
+        currentImageUri = uri,
+        onImageSelected = { onAvatarChanged(it.toString()) },
+        modifier = modifier,
+        onImageRemoved = { onAvatarChanged("") }
+    )
 }
 
 /**
