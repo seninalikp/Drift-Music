@@ -1,0 +1,71 @@
+name: Build & Attach APK Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Prepare APK Asset
+        run: |
+          mkdir -p release-artifacts
+          cp app/build/outputs/apk/release/app-release.apk release-artifacts/Drift-v1.0.0.apk
+
+      - name: Publish & Attach APK to Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Drift Music ${{ github.ref_name }}"
+          files: release-artifacts/Drift-v1.0.0.apk
+          draft: false
+          prerelease: false
+          body: |
+            ### 🌊 Drift Music - Next-Gen Autonomous Music Streamer for Android
+
+            #### 📦 Direct APK Download
+            Download and install the signed APK directly on your Android device:
+            - **[Drift-v1.0.0.apk](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Drift-v1.0.0.apk)**
+
+            #### 🚀 Highlights & Features
+            - **Next-Gen Algorithmic Audio Recommendation Engine:**
+              - 4D Continuous Sonic Vibe Vector (Energy, Valence, Warmth, Danceability)
+              - Dynamic Markov Sequential Transition Graph with Transition Clustering
+              - Real-Time RAM Session Model with Negative Skip Repulsion & Thompson-Sampling Multi-Armed Bandits
+              - Sequence-Aware MMR Reranking with Exponential Fatigue Penalties
+              - Contextual Two-Level BaRT-Style Shelf Bandit Feed Ordering
+            - **Fluid Native UI (Jetpack Compose):**
+              - 1:1 Finger Gesture Physics Draggable Now Playing Sheet
+              - Apple Music-inspired Library Architecture (Playlists, Liked Songs, Artists, Albums)
+              - Dynamic Glassmorphism Player Controls & Adaptive OLED Dark / Radiant Light themes
+            - **Background Audio Architecture:**
+              - AndroidX Media3 ExoPlayer Foreground Service with Lock Screen Controls & Notification Artwork
+              - True Wall-Clock Playback Accumulation via `SystemClock.elapsedRealtime()`
+              - Intelligent Double-Buffer Next Track Prefetching
+
+            ---
+            *Crafted by **Senin Ali KP** (@seninalikp)*
