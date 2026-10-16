@@ -1,6 +1,8 @@
 package com.soundify.player.api
 
 import android.util.Base64
+import android.util.LruCache
+import com.soundify.player.api.TrackDeduplicator.deduplicateTracks
 import com.soundify.player.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -36,6 +38,9 @@ object PipedRepository {
         "https://pipedapi.ngn.tf",
         "https://api.piped.privacydev.net"
     )
+
+    private val streamCache = LruCache<String, Pair<String, Long>>(100)
+    private const val CACHE_TTL_MS = 25 * 60 * 1000L // 25 mins
 
     val FALLBACK_TRACKS = emptyList<Track>()
 
@@ -73,11 +78,11 @@ object PipedRepository {
 
         // 1. Primary: Official JioSaavn API (Direct full-length 320kbps streams from start to finish)
         val officialSaavn = fetchOfficialSaavnTracks(encodedQuery)
-        if (officialSaavn.isNotEmpty()) return@withContext officialSaavn
+        if (officialSaavn.isNotEmpty()) return@withContext officialSaavn.deduplicateTracks()
 
         // 2. Secondary: Community JioSaavn Mirrors (Full-length streams)
         val mirrorSaavn = fetchMirrorSaavnTracks(encodedQuery)
-        if (mirrorSaavn.isNotEmpty()) return@withContext mirrorSaavn
+        if (mirrorSaavn.isNotEmpty()) return@withContext mirrorSaavn.deduplicateTracks()
 
         // 3. Tertiary: Piped YouTube Music Search (Full-length streams)
         val pipedResults = coroutineScope {
@@ -85,12 +90,12 @@ object PipedRepository {
                 async { fetchPipedSearch(instance, encodedQuery) }
             }.awaitAll().firstOrNull { it.isNotEmpty() }.orEmpty()
         }
-        if (pipedResults.isNotEmpty()) return@withContext pipedResults
+        if (pipedResults.isNotEmpty()) return@withContext pipedResults.deduplicateTracks()
 
         return@withContext FALLBACK_TRACKS.filter {
             it.title.contains(query, ignoreCase = true) ||
                 it.artist.contains(query, ignoreCase = true)
-        }
+        }.deduplicateTracks()
     }
 
     private fun fetchOfficialSaavnTracks(encodedQuery: String): List<Track> {
@@ -285,8 +290,15 @@ object PipedRepository {
     }
 
     suspend fun resolveStreamUrl(track: Track): String = withContext(Dispatchers.IO) {
+        // 0. Check in-memory stream cache
+        val cached = streamCache.get(track.id)
+        if (cached != null && (System.currentTimeMillis() - cached.second) < CACHE_TTL_MS) {
+            return@withContext cached.first
+        }
+
         // 1. Play immediately if it's already a full-length direct stream (and NOT an Apple 30-sec preview)
         if (track.streamUrl.startsWith("http") && !track.streamUrl.contains("apple.com")) {
+            streamCache.put(track.id, track.streamUrl to System.currentTimeMillis())
             return@withContext track.streamUrl
         }
 
@@ -295,16 +307,21 @@ object PipedRepository {
         val directMatch = fetchOfficialSaavnTracks(cleanQuery).firstOrNull()
             ?: fetchMirrorSaavnTracks(cleanQuery).firstOrNull()
         if (directMatch != null && directMatch.streamUrl.startsWith("http")) {
+            streamCache.put(track.id, directMatch.streamUrl to System.currentTimeMillis())
             return@withContext directMatch.streamUrl
         }
 
         // 3. Try Piped stream extraction if it's a YouTube videoId
         if (!track.id.startsWith("sp-") && !track.id.startsWith("saavn-")) {
             val ytUrl = resolveYoutubeVideoId(track.id)
-            if (!ytUrl.isNullOrBlank()) return@withContext ytUrl
+            if (!ytUrl.isNullOrBlank()) {
+                streamCache.put(track.id, ytUrl to System.currentTimeMillis())
+                return@withContext ytUrl
+            }
         }
 
-        return@withContext FALLBACK_TRACKS.firstOrNull()?.streamUrl.orEmpty()
+        val fallbackUrl = FALLBACK_TRACKS.firstOrNull()?.streamUrl.orEmpty()
+        return@withContext fallbackUrl
     }
 
     private suspend fun resolveYoutubeVideoId(videoId: String): String? = coroutineScope {

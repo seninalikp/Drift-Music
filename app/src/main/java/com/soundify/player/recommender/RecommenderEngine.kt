@@ -1,5 +1,6 @@
 package com.soundify.player.recommender
 
+import androidx.compose.runtime.Immutable
 import com.soundify.player.model.AudioFeatures
 import com.soundify.player.model.Track
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +35,7 @@ data class ScoredTrack(
     val score: Double
 )
 
+@Immutable
 @Serializable
 data class HomeSection(
     val id: String,

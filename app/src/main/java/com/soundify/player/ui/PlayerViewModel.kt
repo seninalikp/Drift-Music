@@ -14,6 +14,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.soundify.player.api.PipedRepository
+import com.soundify.player.api.TrackDeduplicator.deduplicateTracks
 import com.soundify.player.data.PlayerPreferences
 import com.soundify.player.data.db.AppDatabase
 import com.soundify.player.data.db.HistoryTrackEntity
@@ -460,7 +461,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         searchJob = viewModelScope.launch {
             _isSearching.value = true
             delay(350L) // Debounce typing
-            val tracks = PipedRepository.searchTracks(query).distinctBy { it.id }
+            val tracks = PipedRepository.searchTracks(query).deduplicateTracks()
             _searchResults.value = tracks
             _isSearching.value = false
         }

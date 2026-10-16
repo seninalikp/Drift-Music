@@ -1,7 +1,9 @@
 package com.soundify.player.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
+@Immutable
 @Serializable
 data class AudioFeatures(
     val energy: Float = 0.5f,
@@ -10,6 +12,7 @@ data class AudioFeatures(
     val tempo: Float = 0.5f
 )
 
+@Immutable
 @Serializable
 data class Track(
     val id: String,
@@ -36,6 +39,7 @@ data class Track(
         get() = com.soundify.player.music.SonicVector.infer(title, tags, durationMs)
 }
 
+@Immutable
 @Serializable
 data class PlaylistModel(
     val id: String,
