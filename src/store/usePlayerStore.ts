@@ -1,19 +1,12 @@
 import { create } from 'zustand';
-import { PlayerStore, Track, Playlist, UserProfile, RepeatMode, ApiMode, ActiveTab } from '../types';
+import { PlayerStore, Track, Playlist, RepeatMode, ActiveTab } from '../types';
 import { MOCK_TRACKS } from '../data/mockTracks';
-import { setAsset, getAsset } from '../lib/idb';
 
-const LOCAL_STORAGE_LIKED_KEY = 'soundstream_liked_tracks_v1';
-const LOCAL_STORAGE_CLIENT_ID_KEY = 'soundstream_client_id_v1';
-const LOCAL_STORAGE_MODE_KEY = 'soundstream_api_mode_v1';
-const LOCAL_STORAGE_SEEN_MODAL_KEY = 'soundstream_seen_modal_v1';
-const LOCAL_STORAGE_HISTORY_KEY = 'soundstream_history_v1';
-const LOCAL_STORAGE_VOLUME_KEY = 'soundstream_volume_v1';
-const LOCAL_STORAGE_PLAYLISTS_KEY = 'soundstream_playlists_v1';
-const LOCAL_STORAGE_USER_NAME_KEY = 'soundstream_user_name_v1';
-const LOCAL_STORAGE_USER_BIO_KEY = 'soundstream_user_bio_v1';
+const LOCAL_STORAGE_LIKED_KEY = 'drift_liked_tracks_v1';
+const LOCAL_STORAGE_HISTORY_KEY = 'drift_history_v1';
+const LOCAL_STORAGE_VOLUME_KEY = 'drift_volume_v1';
+const LOCAL_STORAGE_PLAYLISTS_KEY = 'drift_playlists_v1';
 
-// Initial default playlist
 const DEFAULT_INITIAL_PLAYLISTS: Playlist[] = [
   {
     id: 'pl-default-1',
@@ -26,10 +19,9 @@ const DEFAULT_INITIAL_PLAYLISTS: Playlist[] = [
   },
 ];
 
-// Load initial values from localStorage
 const loadInitialLiked = (): Track[] => {
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_LIKED_KEY);
+    const raw = localStorage.getItem(LOCAL_STORAGE_LIKED_KEY) || localStorage.getItem('soundstream_liked_tracks_v1');
     return raw ? JSON.parse(raw) : [MOCK_TRACKS[0], MOCK_TRACKS[1]];
   } catch {
     return [MOCK_TRACKS[0], MOCK_TRACKS[1]];
@@ -38,7 +30,7 @@ const loadInitialLiked = (): Track[] => {
 
 const loadInitialHistory = (): Track[] => {
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_HISTORY_KEY);
+    const raw = localStorage.getItem(LOCAL_STORAGE_HISTORY_KEY) || localStorage.getItem('soundstream_history_v1');
     return raw ? JSON.parse(raw) : [MOCK_TRACKS[0], MOCK_TRACKS[1], MOCK_TRACKS[2]];
   } catch {
     return [MOCK_TRACKS[0]];
@@ -47,28 +39,15 @@ const loadInitialHistory = (): Track[] => {
 
 const loadInitialPlaylists = (): Playlist[] => {
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_PLAYLISTS_KEY);
+    const raw = localStorage.getItem(LOCAL_STORAGE_PLAYLISTS_KEY) || localStorage.getItem('soundstream_playlists_v1');
     return raw ? JSON.parse(raw) : DEFAULT_INITIAL_PLAYLISTS;
   } catch {
     return DEFAULT_INITIAL_PLAYLISTS;
   }
 };
 
-const loadInitialClientId = (): string => {
-  return localStorage.getItem(LOCAL_STORAGE_CLIENT_ID_KEY) || '';
-};
-
-const loadInitialApiMode = (): ApiMode => {
-  const stored = localStorage.getItem(LOCAL_STORAGE_MODE_KEY);
-  return (stored as ApiMode) || 'demo';
-};
-
-const loadInitialSeenModal = (): boolean => {
-  return localStorage.getItem(LOCAL_STORAGE_SEEN_MODAL_KEY) === 'true';
-};
-
 const loadInitialVolume = (): number => {
-  const vol = localStorage.getItem(LOCAL_STORAGE_VOLUME_KEY);
+  const vol = localStorage.getItem(LOCAL_STORAGE_VOLUME_KEY) || localStorage.getItem('soundstream_volume_v1');
   return vol !== null ? parseFloat(vol) : 0.8;
 };
 
@@ -80,8 +59,9 @@ const savePlaylistsToStorage = (playlists: Playlist[]) => {
   }
 };
 
+let sleepTimerTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
-  // Initial state
   currentTrack: MOCK_TRACKS[0],
   isPlaying: false,
   currentTime: 0,
@@ -90,28 +70,19 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   isMuted: false,
   repeatMode: 'off',
   shuffle: false,
+  playbackRate: 1,
+  sleepTimerMinutes: null,
 
   queue: MOCK_TRACKS,
   queueIndex: 0,
-
-  userProfile: {
-    displayName: localStorage.getItem(LOCAL_STORAGE_USER_NAME_KEY) || 'SoundStream Producer',
-    avatarUrl: '',
-    bio: localStorage.getItem(LOCAL_STORAGE_USER_BIO_KEY) || 'Music enthusiast & audio creator',
-  },
 
   playlists: loadInitialPlaylists(),
   likedTracks: loadInitialLiked(),
   history: loadInitialHistory(),
 
-  clientId: loadInitialClientId(),
-  apiMode: loadInitialApiMode(),
-  hasSeenClientIdModal: loadInitialSeenModal(),
-
   activeTab: 'home',
   isFullscreenOpen: false,
   isSettingsOpen: false,
-  isProfileOpen: false,
   isQueueOpen: false,
   isAddToPlaylistOpen: false,
   trackToAddToPlaylist: null,
@@ -119,14 +90,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   searchQuery: '',
   audioError: null,
 
-  // Actions
   playTrack: (track: Track, newQueue?: Track[]) => {
     const currentQueue = newQueue || get().queue;
     const existingIndex = currentQueue.findIndex((t) => t.id === track.id);
     const updatedQueue = existingIndex !== -1 ? currentQueue : [track, ...currentQueue];
     const index = existingIndex !== -1 ? existingIndex : 0;
 
-    // Update history
     const history = get().history.filter((t) => t.id !== track.id);
     const updatedHistory = [track, ...history].slice(0, 30);
     try {
@@ -190,8 +159,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
 
     let nextIdx = queueIndex + 1;
-    if (shuffle) {
-      nextIdx = Math.floor(Math.random() * queue.length);
+    if (shuffle && queue.length > 1) {
+      do {
+        nextIdx = Math.floor(Math.random() * queue.length);
+      } while (nextIdx === queueIndex);
     } else if (nextIdx >= queue.length) {
       if (repeatMode === 'all') {
         nextIdx = 0;
@@ -225,47 +196,88 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   setRepeatMode: (mode: RepeatMode) => set({ repeatMode: mode }),
   toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
 
-  // User Profile
-  updateUserProfile: async (profileUpdate) => {
-    const current = get().userProfile;
-    const updated = { ...current, ...profileUpdate, updatedAt: new Date().toISOString() };
+  setPlaybackRate: (rate: number) => set({ playbackRate: rate }),
 
-    if (profileUpdate.displayName) {
-      localStorage.setItem(LOCAL_STORAGE_USER_NAME_KEY, profileUpdate.displayName);
+  setSleepTimer: (minutes: number | null) => {
+    if (sleepTimerTimeout) {
+      clearTimeout(sleepTimerTimeout);
+      sleepTimerTimeout = null;
     }
-    if (profileUpdate.bio !== undefined) {
-      localStorage.setItem(LOCAL_STORAGE_USER_BIO_KEY, profileUpdate.bio);
+    if (minutes && minutes > 0) {
+      sleepTimerTimeout = setTimeout(() => {
+        set({ isPlaying: false, sleepTimerMinutes: null });
+      }, minutes * 60 * 1000);
     }
-    if (profileUpdate.avatarUrl !== undefined) {
-      // Store in IndexedDB to avoid localStorage capacity limits
-      await setAsset('user_profile_avatar_v1', profileUpdate.avatarUrl);
-    }
-
-    set({ userProfile: updated });
+    set({ sleepTimerMinutes: minutes });
   },
 
-  loadUserProfile: async () => {
-    const storedAvatar = await getAsset('user_profile_avatar_v1');
-    if (storedAvatar) {
-      set((state) => ({
-        userProfile: {
-          ...state.userProfile,
-          avatarUrl: storedAvatar,
-        },
-      }));
-    }
+  addToQueue: (track: Track) => {
+    set((state) => ({
+      queue: [...state.queue, track],
+    }));
   },
 
-  // Playlist Actions
-  createPlaylist: (name, description, coverUrl) => {
+  removeFromQueue: (index: number) => {
+    set((state) => {
+      const updated = state.queue.filter((_, idx) => idx !== index);
+      return { queue: updated };
+    });
+  },
+
+  clearQueue: () => {
+    const current = get().currentTrack;
+    set({
+      queue: current ? [current] : [],
+      queueIndex: 0,
+    });
+  },
+
+  updateTrackArtwork: (trackId, newArtworkUrl) => {
+    const { currentTrack, queue, likedTracks, history, playlists } = get();
+
+    const patchTrack = (t: Track) =>
+      t.id === trackId ? { ...t, artworkUrl: newArtworkUrl } : t;
+
+    const updatedLiked = likedTracks.map(patchTrack);
+    const updatedHistory = history.map(patchTrack);
+    const updatedQueue = queue.map(patchTrack);
+    const updatedPlaylists = playlists.map((pl) => ({
+      ...pl,
+      tracks: pl.tracks.map(patchTrack),
+    }));
+
+    try {
+      localStorage.setItem(LOCAL_STORAGE_LIKED_KEY, JSON.stringify(updatedLiked));
+      localStorage.setItem(LOCAL_STORAGE_HISTORY_KEY, JSON.stringify(updatedHistory));
+      savePlaylistsToStorage(updatedPlaylists);
+    } catch {
+      // ignore
+    }
+
+    set({
+      currentTrack:
+        currentTrack && currentTrack.id === trackId
+          ? { ...currentTrack, artworkUrl: newArtworkUrl }
+          : currentTrack,
+      queue: updatedQueue,
+      likedTracks: updatedLiked,
+      history: updatedHistory,
+      playlists: updatedPlaylists,
+    });
+  },
+
+  createPlaylist: (name, description, coverUrl, initialTracks = []) => {
+    const defaultCover =
+      coverUrl ||
+      initialTracks[0]?.artworkUrl ||
+      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80';
+
     const newPlaylist: Playlist = {
       id: `pl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: name.trim() || 'My Playlist',
       description: description?.trim() || '',
-      coverUrl:
-        coverUrl ||
-        'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
-      tracks: [],
+      coverUrl: defaultCover,
+      tracks: initialTracks,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -276,13 +288,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     return newPlaylist;
   },
 
-  renamePlaylist: (id, name, description) => {
+  updatePlaylistDetails: (id, updates) => {
     const updated = get().playlists.map((pl) => {
       if (pl.id === id) {
         return {
           ...pl,
-          name: name.trim() || pl.name,
-          description: description !== undefined ? description.trim() : pl.description,
+          name: updates.name !== undefined ? updates.name.trim() || pl.name : pl.name,
+          description: updates.description !== undefined ? updates.description.trim() : pl.description,
+          coverUrl: updates.coverUrl !== undefined ? updates.coverUrl : pl.coverUrl,
           updatedAt: new Date().toISOString(),
         };
       }
@@ -291,6 +304,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
     savePlaylistsToStorage(updated);
     set({ playlists: updated });
+  },
+
+  renamePlaylist: (id, name, description) => {
+    get().updatePlaylistDetails(id, { name, description });
   },
 
   deletePlaylist: (id) => {
@@ -380,38 +397,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     return get().likedTracks.some((t) => t.id === trackId);
   },
 
-  setClientId: (id: string) => {
-    const clean = id.trim();
-    try {
-      localStorage.setItem(LOCAL_STORAGE_CLIENT_ID_KEY, clean);
-    } catch {
-      // ignore
-    }
-    set({ clientId: clean });
-  },
-
-  setApiMode: (mode: ApiMode) => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_MODE_KEY, mode);
-    } catch {
-      // ignore
-    }
-    set({ apiMode: mode });
-  },
-
-  setHasSeenClientIdModal: (seen: boolean) => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_SEEN_MODAL_KEY, seen ? 'true' : 'false');
-    } catch {
-      // ignore
-    }
-    set({ hasSeenClientIdModal: seen });
-  },
-
   setActiveTab: (tab: ActiveTab) => set({ activeTab: tab }),
   setIsFullscreenOpen: (open: boolean) => set({ isFullscreenOpen: open }),
   setIsSettingsOpen: (open: boolean) => set({ isSettingsOpen: open }),
-  setIsProfileOpen: (open: boolean) => set({ isProfileOpen: open }),
   setIsQueueOpen: (open: boolean) => set({ isQueueOpen: open }),
   setIsAddToPlaylistOpen: (open: boolean, track: Track | null = null) =>
     set({ isAddToPlaylistOpen: open, trackToAddToPlaylist: track }),

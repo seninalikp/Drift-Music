@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Search, Library, Heart, Radio, ListMusic, History, PlusCircle, Sparkles, Music } from 'lucide-react';
+import { Home, Search, Library, Heart, ListMusic, History, PlusCircle, Music } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
 
 export const Sidebar: React.FC = () => {
@@ -9,7 +9,6 @@ export const Sidebar: React.FC = () => {
   const playlists = usePlayerStore((s) => s.playlists);
   const history = usePlayerStore((s) => s.history);
   const playTrack = usePlayerStore((s) => s.playTrack);
-  const setIsSettingsOpen = usePlayerStore((s) => s.setIsSettingsOpen);
   const createPlaylist = usePlayerStore((s) => s.createPlaylist);
   const setSelectedPlaylistIdForView = usePlayerStore((s) => s.setSelectedPlaylistIdForView);
   const selectedPlaylistIdForView = usePlayerStore((s) => s.selectedPlaylistIdForView);
@@ -25,7 +24,6 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside className="hidden md:flex flex-col w-64 shrink-0 bg-[#000000] p-2 gap-2 select-none h-[calc(100vh-65px)]">
-      {/* Top Main Navigation Card */}
       <nav className="bg-[#121212] rounded-xl p-3 flex flex-col gap-1 border border-[#1e1e1e]">
         <button
           onClick={() => {
@@ -76,7 +74,6 @@ export const Sidebar: React.FC = () => {
         </button>
       </nav>
 
-      {/* Library & Playlists Container */}
       <div className="flex-1 bg-[#121212] rounded-xl p-3 flex flex-col gap-3 overflow-hidden border border-[#1e1e1e]">
         <div className="flex items-center justify-between px-1 text-gray-400">
           <div className="flex items-center gap-2">
@@ -93,7 +90,6 @@ export const Sidebar: React.FC = () => {
           </button>
         </div>
 
-        {/* Liked Songs Quick Card */}
         <div
           onClick={() => {
             setSelectedPlaylistIdForView(null);
@@ -113,7 +109,6 @@ export const Sidebar: React.FC = () => {
           </div>
         </div>
 
-        {/* Custom Playlists & Recent History */}
         <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-1.5 custom-scrollbar">
           {playlists.length > 0 && (
             <div className="flex flex-col gap-1">
@@ -184,25 +179,6 @@ export const Sidebar: React.FC = () => {
               </div>
             ))
           )}
-        </div>
-
-        {/* Bottom Config Banner */}
-        <div className="p-2.5 rounded-lg bg-[#181818] border border-[#282828] flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-300">
-            <Radio className="w-3.5 h-3.5 text-[#FF5500]" />
-            <span>SoundCloud API</span>
-          </div>
-          <p className="text-[10px] text-gray-400 leading-snug">
-            Connect Client ID for live tracks.
-          </p>
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="w-full py-1 rounded-full bg-[#282828] hover:bg-[#333] text-[11px] font-bold text-white transition-colors flex items-center justify-center gap-1"
-            id="sidebar-config-btn"
-          >
-            <Sparkles className="w-3 h-3 text-[#1DB954]" />
-            <span>Settings</span>
-          </button>
         </div>
       </div>
     </aside>

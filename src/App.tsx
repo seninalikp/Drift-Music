@@ -6,10 +6,8 @@ import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
 import { MiniPlayer } from './components/MiniPlayer';
 import { FullscreenPlayer } from './components/FullscreenPlayer';
-import { ClientIdModal } from './components/ClientIdModal';
 import { SettingsModal } from './components/SettingsModal';
 import { QueueDrawer } from './components/QueueDrawer';
-import { UserProfileModal } from './components/UserProfileModal';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal';
 
 import { HomeView } from './views/HomeView';
@@ -31,7 +29,6 @@ export default function App() {
   const nextTrack = usePlayerStore((s) => s.nextTrack);
   const previousTrack = usePlayerStore((s) => s.previousTrack);
 
-  // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -91,18 +88,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#121212] text-white flex flex-col font-sans selection:bg-[#1DB954] selection:text-black">
-      {/* Headless Audio Controller */}
       <AudioEngine />
-
-      {/* Main Top Header */}
       <Header />
 
-      {/* Application Body Layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Desktop Sidebar */}
         <Sidebar />
-
-        {/* Dynamic Main View Area */}
         <main className="flex-1 overflow-y-auto custom-scrollbar bg-gradient-to-b from-[#181818] via-[#121212] to-[#121212]">
           {activeTab === 'home' && <HomeView />}
           {activeTab === 'search' && <SearchView />}
@@ -110,28 +100,11 @@ export default function App() {
         </main>
       </div>
 
-      {/* Sticky Bottom Mini Player */}
       <MiniPlayer />
-
-      {/* Fullscreen Player Modal */}
       <FullscreenPlayer />
-
-      {/* Queue Drawer */}
       <QueueDrawer />
-
-      {/* First Launch Client ID Modal */}
-      <ClientIdModal />
-
-      {/* Settings Modal */}
       <SettingsModal />
-
-      {/* User Profile Modal */}
-      <UserProfileModal />
-
-      {/* Add To Playlist Modal */}
       <AddToPlaylistModal />
-
-      {/* Mobile Sticky Navigation */}
       <BottomNav />
     </div>
   );

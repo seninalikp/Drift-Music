@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Sparkles, Flame, Radio, Clock, TrendingUp, Music } from 'lucide-react';
+import { Play, Sparkles, Flame, Clock, TrendingUp } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { MOCK_TRACKS, MOCK_GENRES } from '../data/mockTracks';
 import { TrackCard } from '../components/TrackCard';
@@ -9,9 +9,6 @@ export const HomeView: React.FC = () => {
   const playTrack = usePlayerStore((s) => s.playTrack);
   const history = usePlayerStore((s) => s.history);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
-  const apiMode = usePlayerStore((s) => s.apiMode);
-  const clientId = usePlayerStore((s) => s.clientId);
-  const setIsSettingsOpen = usePlayerStore((s) => s.setIsSettingsOpen);
 
   const filteredTracks =
     selectedGenre === 'All Genres'
@@ -22,31 +19,6 @@ export const HomeView: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-8 p-4 md:p-8 max-w-7xl mx-auto w-full pb-32">
-      {/* Top Banner Notice if No Client ID in Live Mode */}
-      {apiMode === 'live' && !clientId && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-900/40 via-amber-800/30 to-[#FF5500]/20 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
-          <div className="flex items-center gap-3">
-            <Radio className="w-6 h-6 text-[#FF5500] shrink-0" />
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-white">
-                Live SoundCloud API Mode Enabled
-              </span>
-              <span className="text-xs text-amber-200">
-                Please add your SoundCloud Client ID in Settings to search & stream live SoundCloud tracks.
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="px-4 py-2 rounded-full bg-[#FF5500] hover:bg-[#e04b00] text-black font-extrabold text-xs transition-colors shrink-0"
-            id="home-configure-id-btn"
-          >
-            Configure Client ID
-          </button>
-        </div>
-      )}
-
-      {/* Featured Hero Banner */}
       <div className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-r from-purple-900 via-indigo-900 to-[#121212] p-6 md:p-10 border border-white/10 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 group">
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#1DB954]/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -55,7 +27,6 @@ export const HomeView: React.FC = () => {
             <span className="px-3 py-1 rounded-full bg-[#1DB954]/20 border border-[#1DB954]/40 text-[#1DB954] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
               <Flame className="w-3.5 h-3.5" /> Featured Release
             </span>
-            <span className="text-xs text-purple-200 font-semibold">• Trending #1</span>
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
@@ -81,7 +52,6 @@ export const HomeView: React.FC = () => {
           </div>
         </div>
 
-        {/* Hero Artwork */}
         <div
           onClick={() => playTrack(heroTrack, MOCK_TRACKS)}
           className="relative aspect-square w-48 h-48 sm:w-64 sm:h-64 rounded-2xl overflow-hidden shadow-2xl border-2 border-white/10 cursor-pointer shrink-0 z-10 group-hover:scale-105 transition-transform duration-500"
@@ -99,14 +69,12 @@ export const HomeView: React.FC = () => {
         </div>
       </div>
 
-      {/* Genre Category Pills */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-[#1DB954]" />
             <h2 className="text-lg font-extrabold text-white tracking-tight">Explore Categories</h2>
           </div>
-          <span className="text-xs text-gray-400 font-medium">Curated Sound Tracks</span>
         </div>
 
         <div className="flex items-center gap-2.5 overflow-x-auto pb-2 custom-scrollbar">
@@ -127,7 +95,6 @@ export const HomeView: React.FC = () => {
         </div>
       </div>
 
-      {/* Trending Track Grid */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -148,7 +115,6 @@ export const HomeView: React.FC = () => {
         </div>
       </div>
 
-      {/* Recently Played Row if History Exists */}
       {history.length > 0 && (
         <div className="flex flex-col gap-4 pt-4 border-t border-[#282828]">
           <div className="flex items-center gap-2">

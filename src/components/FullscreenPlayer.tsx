@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ChevronDown,
   Play,
@@ -12,13 +12,14 @@ import {
   VolumeX,
   Heart,
   ListMusic,
-  ExternalLink,
-  Radio,
-  Sparkles,
-  Keyboard,
+  Quote,
+  Moon,
+  Gauge,
+  PlusCircle,
 } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { formatTime } from './TrackCard';
+import { ArtworkImage } from './ArtworkImage';
 
 export const FullscreenPlayer: React.FC = () => {
   const isFullscreenOpen = usePlayerStore((s) => s.isFullscreenOpen);
@@ -32,6 +33,8 @@ export const FullscreenPlayer: React.FC = () => {
   const isMuted = usePlayerStore((s) => s.isMuted);
   const repeatMode = usePlayerStore((s) => s.repeatMode);
   const shuffle = usePlayerStore((s) => s.shuffle);
+  const playbackRate = usePlayerStore((s) => s.playbackRate);
+  const sleepTimerMinutes = usePlayerStore((s) => s.sleepTimerMinutes);
 
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause);
   const nextTrack = usePlayerStore((s) => s.nextTrack);
@@ -42,12 +45,17 @@ export const FullscreenPlayer: React.FC = () => {
   const setRepeatMode = usePlayerStore((s) => s.setRepeatMode);
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
   const toggleLikeTrack = usePlayerStore((s) => s.toggleLikeTrack);
+  const setPlaybackRate = usePlayerStore((s) => s.setPlaybackRate);
+  const setSleepTimer = usePlayerStore((s) => s.setSleepTimer);
+  const setIsAddToPlaylistOpen = usePlayerStore((s) => s.setIsAddToPlaylistOpen);
   const isLiked = currentTrack ? usePlayerStore((s) => s.isLiked(currentTrack.id)) : false;
 
-  const isQueueOpen = usePlayerStore((s) => s.isQueueOpen);
-  const setIsQueueOpen = usePlayerStore((s) => s.setIsQueueOpen);
+  const queue = usePlayerStore((s) => s.queue);
+  const playTrack = usePlayerStore((s) => s.playTrack);
 
-  // Close on Escape key
+  // Apple Music Bottom Mode Tabs: 'art' | 'lyrics' | 'queue'
+  const [activePanel, setActivePanel] = useState<'art' | 'lyrics' | 'queue'>('art');
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isFullscreenOpen) {
@@ -60,11 +68,8 @@ export const FullscreenPlayer: React.FC = () => {
 
   if (!isFullscreenOpen || !currentTrack) return null;
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    seek(parseFloat(e.target.value));
-  };
+  const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+  const remainingTime = Math.max(0, duration - currentTime);
 
   const cycleRepeat = () => {
     if (repeatMode === 'off') setRepeatMode('all');
@@ -72,141 +77,236 @@ export const FullscreenPlayer: React.FC = () => {
     else setRepeatMode('off');
   };
 
+  const cycleSpeed = () => {
+    const speeds = [0.85, 1, 1.15, 1.25, 1.5];
+    const nextIdx = (speeds.indexOf(playbackRate) + 1) % speeds.length;
+    setPlaybackRate(speeds[nextIdx]);
+  };
+
+  const cycleSleepTimer = () => {
+    const options: (number | null)[] = [null, 15, 30, 60];
+    const nextIdx = (options.indexOf(sleepTimerMinutes) + 1) % options.length;
+    setSleepTimer(options[nextIdx]);
+  };
+
+  const defaultLyrics = currentTrack.lyrics || [
+    `♪ ${currentTrack.title} — ${currentTrack.artist}`,
+    currentTrack.description || 'Feel the rhythm and immersive soundscape.',
+    'Lost in the frequency, drifting through neon lights',
+    'Every beat resonates deeper in the night',
+    'Crystal clear acoustics, liquid glass horizons',
+    ' Pure studio stream • Drift Audio Engine',
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 bg-[#090909]/95 backdrop-blur-2xl flex flex-col justify-between p-6 md:p-10 select-none overflow-y-auto animate-fadeIn">
-      {/* Dynamic Background Glow */}
-      <div className="absolute inset-0 pointer-events-none opacity-30 bg-gradient-to-tr from-[#1DB954]/30 via-purple-900/30 to-[#FF5500]/20 blur-3xl" />
-
-      {/* Top Header Row */}
-      <div className="relative z-10 flex items-center justify-between w-full max-w-4xl mx-auto">
-        <button
-          onClick={() => setIsFullscreenOpen(false)}
-          className="p-2 rounded-full bg-[#181818] hover:bg-[#282828] text-gray-300 hover:text-white transition-colors"
-          title="Minimize Player (Esc)"
-          aria-label="Minimize Player"
-          id="fullscreen-minimize-btn"
-        >
-          <ChevronDown className="w-6 h-6" />
-        </button>
-
-        <div className="flex flex-col items-center">
-          <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400">
-            Playing From Playlist
-          </span>
-          <span className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
-            {currentTrack.isDemo ? (
-              <>
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Demo Recommendations
-              </>
-            ) : (
-              <>
-                <Radio className="w-3.5 h-3.5 text-orange-400" /> SoundCloud Live Stream
-              </>
-            )}
-          </span>
-        </div>
-
-        <button
-          onClick={() => setIsQueueOpen(!isQueueOpen)}
-          className={`p-2 rounded-full transition-colors ${
-            isQueueOpen ? 'bg-[#1DB954] text-black' : 'bg-[#181818] hover:bg-[#282828] text-gray-300'
-          }`}
-          title="View Play Queue"
-          aria-label="Open Queue"
-          id="fullscreen-queue-toggle-btn"
-        >
-          <ListMusic className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Middle Content Row: Artwork & Track Metadata */}
-      <div className="relative z-10 my-auto flex flex-col items-center justify-center w-full max-w-lg mx-auto gap-6 py-6">
-        {/* Large Artwork */}
-        <div className="relative aspect-square w-64 h-64 sm:w-80 sm:h-80 rounded-2xl overflow-hidden shadow-2xl border border-white/10 group">
-          <img
+    <div className="fixed inset-0 z-50 bg-[#08080c] flex flex-col justify-between p-5 sm:p-8 md:p-10 select-none overflow-hidden animate-slideUpSheet">
+      {/* sebjvidal Apple Music Dynamic Multi-Layer Blurred Artwork Mesh Background */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -inset-24 opacity-55 blur-[90px] saturate-200 animate-mesh">
+          <ArtworkImage
             src={currentTrack.artworkUrl}
-            alt={currentTrack.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            title={currentTrack.title}
+            artist={currentTrack.artist}
+            trackId={currentTrack.id}
+            className="w-full h-full object-cover"
           />
         </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/55 to-black/85" />
+      </div>
 
-        {/* Track Title & Artist */}
+      {/* Top Apple Music Sheet Grip Handle & Header */}
+      <div className="relative z-10 flex flex-col items-center w-full max-w-2xl mx-auto gap-3">
+        <div
+          onClick={() => setIsFullscreenOpen(false)}
+          className="w-11 h-1.5 rounded-full bg-white/30 hover:bg-white/60 cursor-pointer transition-colors"
+          title="Swipe or click to minimize"
+        />
+
         <div className="flex items-center justify-between w-full">
-          <div className="flex flex-col min-w-0 pr-4">
+          <button
+            onClick={() => setIsFullscreenOpen(false)}
+            className="p-2.5 rounded-full liquid-button text-white/80 hover:text-white"
+            title="Minimize (Esc)"
+            id="fullscreen-minimize-btn"
+          >
+            <ChevronDown className="w-5 h-5" />
+          </button>
+
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/50">
+              Playing From Library
+            </span>
+            <span className="text-xs font-semibold text-white/90 mt-0.5">
+              {currentTrack.genre || 'Lossless Audio'}
+            </span>
+          </div>
+
+          <button
+            onClick={() => setIsAddToPlaylistOpen(true, currentTrack)}
+            className="p-2.5 rounded-full liquid-button text-white/80 hover:text-white"
+            title="Add to Playlist"
+          >
+            <PlusCircle className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Center Content Area: Switches smoothly between Artwork, Lyrics, and Up Next Queue */}
+      <div className="relative z-10 my-auto flex flex-col items-center justify-center w-full max-w-lg mx-auto py-2 flex-1 min-h-0">
+        {activePanel === 'art' && (
+          <div className="flex flex-col items-center justify-center w-full h-full gap-6">
+            {/* Apple Music Spring-Physics Scaling Artwork */}
+            <div
+              onClick={togglePlayPause}
+              className={`relative aspect-square w-64 sm:w-80 md:w-[340px] rounded-[28px] overflow-hidden cursor-pointer transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] border border-white/20 ${
+                isPlaying
+                  ? 'scale-100 shadow-[0_30px_80px_rgba(0,0,0,0.85)]'
+                  : 'scale-[0.84] opacity-85 shadow-[0_12px_32px_rgba(0,0,0,0.5)]'
+              }`}
+            >
+              <ArtworkImage
+                src={currentTrack.artworkUrl}
+                title={currentTrack.title}
+                artist={currentTrack.artist}
+                trackId={currentTrack.id}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+        )}
+
+        {activePanel === 'lyrics' && (
+          <div className="w-full h-72 sm:h-80 overflow-y-auto custom-scrollbar liquid-glass rounded-3xl p-6 flex flex-col gap-5 text-left animate-fadeIn">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-white/50">
+              Synced Audio Notes & Lyrics
+            </span>
+            {defaultLyrics.map((line, i) => {
+              const activeLineIdx =
+                Math.floor((currentTime / (duration || 180)) * defaultLyrics.length) %
+                defaultLyrics.length;
+              const isCurrentLine = i === activeLineIdx;
+              return (
+                <p
+                  key={i}
+                  onClick={() => seek((i / defaultLyrics.length) * (duration || 180))}
+                  className={`text-lg sm:text-2xl font-extrabold tracking-tight cursor-pointer transition-all duration-500 ${
+                    isCurrentLine
+                      ? 'text-white scale-[1.02] origin-left drop-shadow-[0_2px_12px_rgba(255,255,255,0.35)]'
+                      : 'text-white/35 hover:text-white/60 blur-[0.3px]'
+                  }`}
+                >
+                  {line}
+                </p>
+              );
+            })}
+          </div>
+        )}
+
+        {activePanel === 'queue' && (
+          <div className="w-full h-72 sm:h-80 overflow-y-auto custom-scrollbar liquid-glass rounded-3xl p-4 flex flex-col gap-2 animate-fadeIn">
+            <div className="flex items-center justify-between px-2 pb-2 border-b border-white/10">
+              <span className="text-xs font-bold uppercase tracking-wider text-white/70">
+                Up Next ({queue.length})
+              </span>
+              <span className="text-[11px] text-white/40">Tap any track to play</span>
+            </div>
+            {queue.map((trk, idx) => {
+              const isCurr = trk.id === currentTrack.id;
+              return (
+                <div
+                  key={`fs-q-${trk.id}-${idx}`}
+                  onClick={() => playTrack(trk, queue)}
+                  className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
+                    isCurr
+                      ? 'bg-white/15 border border-white/25'
+                      : 'hover:bg-white/10'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0">
+                    <ArtworkImage
+                      src={trk.artworkUrl}
+                      title={trk.title}
+                      artist={trk.artist}
+                      trackId={trk.id}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className={`text-xs font-bold truncate ${isCurr ? 'text-[#1DB954]' : 'text-white'}`}>
+                      {trk.title}
+                    </span>
+                    <span className="text-[11px] text-white/60 truncate">{trk.artist}</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-white/50">
+                    {formatTime(trk.duration)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Apple Music Controls Stack */}
+      <div className="relative z-10 w-full max-w-lg mx-auto flex flex-col gap-4">
+        {/* Title, Artist & Favorite Button */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight truncate">
               {currentTrack.title}
             </h1>
-            <p className="text-sm sm:text-base font-semibold text-gray-400 truncate mt-1">
+            <p className="text-sm sm:text-base font-semibold text-white/65 truncate">
               {currentTrack.artist}
             </p>
-            {currentTrack.genre && (
-              <span className="mt-2 text-[11px] font-bold text-[#1DB954] bg-[#1DB954]/10 border border-[#1DB954]/30 px-2.5 py-0.5 rounded-full w-fit">
-                {currentTrack.genre}
-              </span>
-            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {currentTrack.permalinkUrl && (
-              <a
-                href={currentTrack.permalinkUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="p-2.5 rounded-full bg-[#181818] hover:bg-[#282828] text-gray-300 hover:text-white transition-colors"
-                title="Open on SoundCloud"
-              >
-                <ExternalLink className="w-5 h-5" />
-              </a>
-            )}
-
-            <button
-              onClick={() => toggleLikeTrack(currentTrack)}
-              className={`p-2.5 rounded-full bg-[#181818] hover:bg-[#282828] transition-colors ${
-                isLiked ? 'text-purple-400' : 'text-gray-400 hover:text-white'
+          <button
+            onClick={() => toggleLikeTrack(currentTrack)}
+            className="p-2.5 rounded-full liquid-button transition-transform active:scale-125"
+            title={isLiked ? 'Liked' : 'Like'}
+            id="fullscreen-like-btn"
+          >
+            <Heart
+              className={`w-5 h-5 ${
+                isLiked ? 'fill-[#FA2D48] text-[#FA2D48]' : 'text-white/80'
               }`}
-              title={isLiked ? 'Liked' : 'Like'}
-              aria-label="Like Track"
-              id="fullscreen-like-btn"
-            >
-              <Heart className={`w-6 h-6 ${isLiked ? 'fill-purple-500 text-purple-500' : ''}`} />
-            </button>
-          </div>
+            />
+          </button>
         </div>
 
-        {/* Large Seek Bar */}
-        <div className="w-full flex flex-col gap-2">
-          <div className="relative flex items-center w-full h-3 cursor-pointer">
+        {/* Liquid Glass Progress Bar with Remaining Time */}
+        <div className="w-full flex flex-col gap-1.5">
+          <div className="relative flex items-center w-full h-3 cursor-pointer group">
             <input
               type="range"
               min={0}
               max={duration || 100}
               step={0.5}
               value={currentTime}
-              onChange={handleSeekChange}
-              className="w-full h-1.5 bg-[#383838] hover:h-2 rounded-lg appearance-none cursor-pointer accent-[#1DB954] focus:outline-none transition-all"
+              onChange={(e) => seek(parseFloat(e.target.value))}
+              className="w-full h-1.5 group-hover:h-2.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-white focus:outline-none transition-all"
               id="fullscreen-seek-slider"
             />
             <div
-              className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 bg-[#1DB954] rounded-lg pointer-events-none"
+              className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 group-hover:h-2.5 bg-white rounded-full pointer-events-none transition-all shadow-[0_0_12px_rgba(255,255,255,0.8)]"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-xs font-mono text-gray-400">
+          <div className="flex items-center justify-between text-[11px] font-mono text-white/55">
             <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
+            <span>-{formatTime(remainingTime)}</span>
           </div>
         </div>
 
-        {/* Transport Action Bar */}
-        <div className="flex items-center justify-between w-full max-w-sm px-2">
+        {/* Main Transport Controls */}
+        <div className="flex items-center justify-between w-full px-2">
           <button
             onClick={toggleShuffle}
-            className={`p-2 rounded-full transition-colors ${
-              shuffle ? 'text-[#1DB954] bg-[#1DB954]/10' : 'text-gray-400 hover:text-white'
+            className={`p-2.5 rounded-full transition-all ${
+              shuffle ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
             }`}
             title="Shuffle"
-            aria-label="Toggle Shuffle"
             id="fullscreen-shuffle-btn"
           >
             <Shuffle className="w-5 h-5" />
@@ -214,19 +314,17 @@ export const FullscreenPlayer: React.FC = () => {
 
           <button
             onClick={previousTrack}
-            className="p-3 text-gray-200 hover:text-white transition-transform hover:scale-110"
+            className="p-3 text-white hover:scale-110 active:scale-90 transition-transform"
             title="Previous"
-            aria-label="Previous Track"
             id="fullscreen-prev-btn"
           >
-            <SkipBack className="w-7 h-7 fill-current" />
+            <SkipBack className="w-8 h-8 fill-current" />
           </button>
 
           <button
             onClick={togglePlayPause}
-            className="w-16 h-16 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black flex items-center justify-center shadow-xl hover:scale-105 transition-all"
+            className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_0_35px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
             title={isPlaying ? 'Pause' : 'Play'}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
             id="fullscreen-play-btn"
           >
             {isPlaying ? (
@@ -238,39 +336,40 @@ export const FullscreenPlayer: React.FC = () => {
 
           <button
             onClick={nextTrack}
-            className="p-3 text-gray-200 hover:text-white transition-transform hover:scale-110"
+            className="p-3 text-white hover:scale-110 active:scale-90 transition-transform"
             title="Next"
-            aria-label="Next Track"
             id="fullscreen-next-btn"
           >
-            <SkipForward className="w-7 h-7 fill-current" />
+            <SkipForward className="w-8 h-8 fill-current" />
           </button>
 
           <button
             onClick={cycleRepeat}
-            className={`p-2 rounded-full transition-colors ${
-              repeatMode !== 'off' ? 'text-[#1DB954] bg-[#1DB954]/10' : 'text-gray-400 hover:text-white'
+            className={`p-2.5 rounded-full transition-all ${
+              repeatMode !== 'off' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
             }`}
             title={`Repeat: ${repeatMode}`}
-            aria-label="Cycle Repeat"
             id="fullscreen-repeat-btn"
           >
-            {repeatMode === 'one' ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
+            {repeatMode === 'one' ? (
+              <Repeat1 className="w-5 h-5" />
+            ) : (
+              <Repeat className="w-5 h-5" />
+            )}
           </button>
         </div>
 
-        {/* Volume Slider Row */}
-        <div className="flex items-center gap-3 w-full max-w-xs pt-2">
+        {/* Apple Music Style Volume Slider */}
+        <div className="flex items-center gap-3 w-full px-1">
           <button
             onClick={toggleMute}
-            className="p-1 text-gray-400 hover:text-white"
-            title={isMuted ? 'Unmute' : 'Mute'}
+            className="text-white/50 hover:text-white transition-colors"
             id="fullscreen-mute-btn"
           >
             {isMuted || volume === 0 ? (
-              <VolumeX className="w-5 h-5 text-red-400" />
+              <VolumeX className="w-4 h-4 text-rose-400" />
             ) : (
-              <Volume2 className="w-5 h-5" />
+              <Volume2 className="w-4 h-4" />
             )}
           </button>
           <input
@@ -280,21 +379,63 @@ export const FullscreenPlayer: React.FC = () => {
             step={0.01}
             value={isMuted ? 0 : volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-full h-1.5 bg-[#383838] rounded-lg appearance-none cursor-pointer accent-[#1DB954] focus:outline-none"
-            aria-label="Volume slider"
+            className="w-full h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-white focus:outline-none"
             id="fullscreen-volume-slider"
           />
         </div>
-      </div>
 
-      {/* Keyboard Shortcuts Footer Note */}
-      <div className="relative z-10 w-full max-w-xl mx-auto flex items-center justify-center gap-4 text-xs text-gray-400 bg-[#121212]/80 border border-[#282828] py-2 px-4 rounded-full">
-        <Keyboard className="w-4 h-4 text-[#1DB954]" />
-        <span>
-          <strong className="text-gray-300">Space:</strong> Play/Pause &nbsp;|&nbsp;{' '}
-          <strong className="text-gray-300">← →:</strong> Seek 5s &nbsp;|&nbsp;{' '}
-          <strong className="text-gray-300">Esc:</strong> Close
-        </span>
+        {/* Apple Music Bottom Pill Toolbar: Lyrics, Speed (Slowed/Sped-up), Sleep Timer, Queue */}
+        <div className="flex items-center justify-around pt-1">
+          <button
+            onClick={() => setActivePanel(activePanel === 'lyrics' ? 'art' : 'lyrics')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all ${
+              activePanel === 'lyrics'
+                ? 'bg-white text-black shadow-lg'
+                : 'liquid-button text-white/75 hover:text-white'
+            }`}
+          >
+            <Quote className="w-3.5 h-3.5" />
+            <span>Lyrics</span>
+          </button>
+
+          <button
+            onClick={cycleSpeed}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all ${
+              playbackRate !== 1
+                ? 'bg-[#1DB954] text-black shadow-lg'
+                : 'liquid-button text-white/75 hover:text-white'
+            }`}
+            title="Playback Speed (Slowed / Sped Up)"
+          >
+            <Gauge className="w-3.5 h-3.5" />
+            <span>{playbackRate}x</span>
+          </button>
+
+          <button
+            onClick={cycleSleepTimer}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all ${
+              sleepTimerMinutes
+                ? 'bg-purple-500 text-white shadow-lg'
+                : 'liquid-button text-white/75 hover:text-white'
+            }`}
+            title="Sleep Timer"
+          >
+            <Moon className="w-3.5 h-3.5" />
+            <span>{sleepTimerMinutes ? `${sleepTimerMinutes}m` : 'Sleep'}</span>
+          </button>
+
+          <button
+            onClick={() => setActivePanel(activePanel === 'queue' ? 'art' : 'queue')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all ${
+              activePanel === 'queue'
+                ? 'bg-white text-black shadow-lg'
+                : 'liquid-button text-white/75 hover:text-white'
+            }`}
+          >
+            <ListMusic className="w-3.5 h-3.5" />
+            <span>Up Next</span>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -12,14 +12,10 @@ export interface Track {
   likesCount?: number;
   createdAt?: string;
   description?: string;
+  lyrics?: string[];
   isStreamable: boolean;
   isDemo?: boolean;
-  isUnmatched?: boolean; // Flagged for imported tracks without exact SC match
-  spotifyOriginalMeta?: {
-    spotifyId: string;
-    originalTitle: string;
-    originalArtist: string;
-  };
+  isImported?: boolean;
 }
 
 export interface Playlist {
@@ -30,18 +26,9 @@ export interface Playlist {
   tracks: Track[];
   createdAt: string;
   updatedAt: string;
-  isSpotifyImported?: boolean;
-}
-
-export interface UserProfile {
-  displayName: string;
-  avatarUrl: string;
-  bio?: string;
-  updatedAt?: string;
 }
 
 export type RepeatMode = 'off' | 'one' | 'all';
-export type ApiMode = 'demo' | 'live';
 export type ActiveTab = 'home' | 'search' | 'library';
 
 export interface PlayerStore {
@@ -54,27 +41,22 @@ export interface PlayerStore {
   isMuted: boolean;
   repeatMode: RepeatMode;
   shuffle: boolean;
+  playbackRate: number;
+  sleepTimerMinutes: number | null;
 
   // Queue
   queue: Track[];
   queueIndex: number;
 
-  // Library & Playlists & User Profile
-  userProfile: UserProfile;
+  // Library & Playlists
   playlists: Playlist[];
   likedTracks: Track[];
   history: Track[];
-
-  // Client ID & Configuration
-  clientId: string;
-  apiMode: ApiMode;
-  hasSeenClientIdModal: boolean;
 
   // UI state
   activeTab: ActiveTab;
   isFullscreenOpen: boolean;
   isSettingsOpen: boolean;
-  isProfileOpen: boolean;
   isQueueOpen: boolean;
   isAddToPlaylistOpen: boolean;
   trackToAddToPlaylist: Track | null;
@@ -94,13 +76,20 @@ export interface PlayerStore {
   previousTrack: () => void;
   setRepeatMode: (mode: RepeatMode) => void;
   toggleShuffle: () => void;
+  setPlaybackRate: (rate: number) => void;
+  setSleepTimer: (minutes: number | null) => void;
 
-  // User Profile
-  updateUserProfile: (profile: Partial<UserProfile>) => Promise<void>;
-  loadUserProfile: () => Promise<void>;
+  // Queue Management
+  addToQueue: (track: Track) => void;
+  removeFromQueue: (index: number) => void;
+  clearQueue: () => void;
+
+  // Artwork & Track Metadata Sync
+  updateTrackArtwork: (trackId: string | number, newArtworkUrl: string) => void;
 
   // Playlists
-  createPlaylist: (name: string, description?: string, coverUrl?: string) => Playlist;
+  createPlaylist: (name: string, description?: string, coverUrl?: string, initialTracks?: Track[]) => Playlist;
+  updatePlaylistDetails: (id: string, updates: { name?: string; description?: string; coverUrl?: string }) => void;
   renamePlaylist: (id: string, name: string, description?: string) => void;
   deletePlaylist: (id: string) => void;
   addTrackToPlaylist: (playlistId: string, track: Track) => void;
@@ -110,14 +99,9 @@ export interface PlayerStore {
   toggleLikeTrack: (track: Track) => void;
   isLiked: (trackId: string | number) => boolean;
 
-  setClientId: (id: string) => void;
-  setApiMode: (mode: ApiMode) => void;
-  setHasSeenClientIdModal: (seen: boolean) => void;
-
   setActiveTab: (tab: ActiveTab) => void;
   setIsFullscreenOpen: (open: boolean) => void;
   setIsSettingsOpen: (open: boolean) => void;
-  setIsProfileOpen: (open: boolean) => void;
   setIsQueueOpen: (open: boolean) => void;
   setIsAddToPlaylistOpen: (open: boolean, track?: Track | null) => void;
   setSelectedPlaylistIdForView: (id: string | null) => void;

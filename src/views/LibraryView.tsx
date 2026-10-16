@@ -11,13 +11,9 @@ import {
   ArrowDown,
   Edit2,
   Check,
-  Radio,
-  Sparkles,
 } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { formatTime } from '../components/TrackCard';
-import { TrackCard } from '../components/TrackCard';
-import { SpotifyImportModal } from '../components/SpotifyImportModal';
+import { formatTime, TrackCard } from '../components/TrackCard';
 
 export const LibraryView: React.FC = () => {
   const likedTracks = usePlayerStore((s) => s.likedTracks);
@@ -33,7 +29,6 @@ export const LibraryView: React.FC = () => {
   const removeTrackFromPlaylist = usePlayerStore((s) => s.removeTrackFromPlaylist);
   const reorderPlaylistTracks = usePlayerStore((s) => s.reorderPlaylistTracks);
 
-  const [isSpotifyModalOpen, setIsSpotifyModalOpen] = useState(false);
   const [isEditingPlaylist, setIsEditingPlaylist] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
@@ -69,14 +64,12 @@ export const LibraryView: React.FC = () => {
     }
   };
 
-  // If a specific playlist is selected to view
   if (currentPlaylist) {
     const totalSecs = currentPlaylist.tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
     const totalMins = Math.floor(totalSecs / 60);
 
     return (
       <div className="flex flex-col gap-8 p-4 md:p-8 max-w-7xl mx-auto w-full pb-32">
-        {/* Playlist Header */}
         <div className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-r from-emerald-900/60 via-indigo-900/60 to-[#121212] p-6 md:p-10 border border-white/10 shadow-2xl flex flex-col sm:flex-row items-center sm:items-end gap-6">
           <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl bg-[#222] border border-[#333] flex items-center justify-center text-white shadow-2xl shrink-0 overflow-hidden">
             {currentPlaylist.coverUrl ? (
@@ -191,7 +184,6 @@ export const LibraryView: React.FC = () => {
           </div>
         </div>
 
-        {/* Tracks Table */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between pb-2 border-b border-[#282828]">
             <h2 className="text-base font-bold text-white">Playlist Tracks</h2>
@@ -221,16 +213,9 @@ export const LibraryView: React.FC = () => {
                       className="w-10 h-10 rounded-lg object-cover bg-[#333] shrink-0"
                     />
                     <div className="flex flex-col min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white group-hover:text-[#1DB954] truncate">
-                          {trk.title}
-                        </span>
-                        {trk.isUnmatched && (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
-                            Unmatched
-                          </span>
-                        )}
-                      </div>
+                      <span className="text-sm font-bold text-white group-hover:text-[#1DB954] truncate">
+                        {trk.title}
+                      </span>
                       <span className="text-xs text-gray-400 truncate">{trk.artist}</span>
                     </div>
                   </div>
@@ -244,7 +229,6 @@ export const LibraryView: React.FC = () => {
                       Play
                     </button>
 
-                    {/* Reorder Buttons */}
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => reorderPlaylistTracks(currentPlaylist.id, idx, Math.max(0, idx - 1))}
@@ -287,10 +271,8 @@ export const LibraryView: React.FC = () => {
     );
   }
 
-  // Default Liked Songs + Playlists overview
   return (
     <div className="flex flex-col gap-8 p-4 md:p-8 max-w-7xl mx-auto w-full pb-32">
-      {/* Liked Songs Hero Header */}
       <div className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-r from-purple-900 via-indigo-900 to-[#121212] p-6 md:p-10 border border-white/10 shadow-2xl flex flex-col sm:flex-row items-center sm:items-end gap-6">
         <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-white shadow-2xl shrink-0">
           <Heart className="w-16 h-16 fill-white" />
@@ -311,17 +293,6 @@ export const LibraryView: React.FC = () => {
         </div>
 
         <div className="sm:ml-auto flex items-center gap-3 flex-wrap">
-          <button
-            onClick={() => setIsSpotifyModalOpen(true)}
-            className="px-4 py-2.5 rounded-full bg-[#1DB954]/20 hover:bg-[#1DB954]/30 border border-[#1DB954]/40 text-[#1DB954] font-extrabold text-xs flex items-center gap-2 transition-all shadow-lg"
-            id="spotify-import-btn"
-          >
-            <div className="w-4 h-4 rounded-full bg-[#1DB954] text-black flex items-center justify-center text-[9px] font-extrabold">
-              S
-            </div>
-            <span>Spotify Import</span>
-          </button>
-
           <button
             onClick={handleCreateNewPlaylist}
             className="px-4 py-2.5 rounded-full bg-[#282828] hover:bg-[#333] text-white font-extrabold text-xs flex items-center gap-2 transition-all"
@@ -344,7 +315,6 @@ export const LibraryView: React.FC = () => {
         </div>
       </div>
 
-      {/* Playlists Quick Bar */}
       {playlists.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
@@ -380,7 +350,6 @@ export const LibraryView: React.FC = () => {
         </div>
       )}
 
-      {/* Liked Songs Track Grid */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between pb-2 border-b border-[#282828]">
           <h2 className="text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
@@ -418,7 +387,6 @@ export const LibraryView: React.FC = () => {
         )}
       </div>
 
-      {/* History Log Section */}
       {history.length > 0 && (
         <div className="flex flex-col gap-4 pt-6 border-t border-[#282828]">
           <div className="flex items-center justify-between">
@@ -454,12 +422,6 @@ export const LibraryView: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Spotify Import Modal */}
-      <SpotifyImportModal
-        isOpen={isSpotifyModalOpen}
-        onClose={() => setIsSpotifyModalOpen(false)}
-      />
     </div>
   );
 };
